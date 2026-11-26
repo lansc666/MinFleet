@@ -19,7 +19,7 @@ conda env create -f environment.yml
 conda activate minfleet
 ```
 
-Alternatively, run `python -m pip install -r requirements.txt` and install [Poppler](https://poppler.freedesktop.org/) separately. Figure 2 requires `pdftoppm` on `PATH` or its full path in `PDFTOPPM`. Arial reproduces the figure typography; SI commands accept `--font-file PATH` or `--allow-font-fallback`.
+Alternatively, run `python -m pip install -r requirements.txt` and install [Poppler](https://poppler.freedesktop.org/) for Figure 2 with its `bin` directory on `PATH`. Arial reproduces the figure typography. SI commands accept `--font-file PATH` or `--allow-font-fallback`.
 
 ## Reproduce the figures
 
@@ -37,8 +37,8 @@ python supplementary/reproduce.py fig2
 |---|---|
 | Main Fig. 2 | Rankings and population-group statistics for 407 cities; uses the supplied national map image and four-city aggregate comparison values |
 | Main Fig. 3 | Sliding-window mutual information, UMAP and Spearman correlations using the nine completed structural indicators |
-| Main Fig. 4 | Sensitivity summaries and rank correlations for 406 cities, including vehicle waiting with a 60-min departure window |
-| SI Fig. 1 | Departure-time sensitivity correlations for 164 cities (a, b) and a comparison of 60- and 120-min departure windows for vehicle waiting across 406 cities (c) |
+| Main Fig. 4 | Sensitivity summaries and rank correlations for 406 cities |
+| SI Fig. 1 | Pearson and Spearman correlations with baseline η for departure-time scale and location (a–b, 164 cities), and Spearman correlations for vehicle waiting limits under two departure windows (c, 406 cities) |
 | SI Fig. 2 | Population maps and spatial sensitivity for three example cities |
 
 Results go to `results/main_text/` or `results/supplementary/`. `--output PATH` selects an empty output directory; `--dpi` controls image resolution (default: 600). Use `fig4 --stats-only` for statistics or `fig3 --analysis-only` to skip drawing. UMAP uses the nine standardized indicators, excluding eta, with `n_neighbors=40`, `min_dist=0.3` and seed 42.
@@ -47,35 +47,51 @@ Results go to `results/main_text/` or `results/supplementary/`. `--output PATH` 
 
 ## Run simulations and other calculations
 
-Saved matrices and population centres are included for the simulation inputs. No ORS connection or API key is required.
+### Reference-demand simulation
+
+Simulate baseline η using the supplied travel-time matrices and population centres. The simulations run offline with inputs in `data/country/`. Use `--country-data PATH` to select a different input directory for simulations or indicator calculations.
 
 ```bash
 python main_text/simulate.py baseline --province Guangdong --city dongguan --seed 42
+```
+
+Each city uses `<province>/<city>_center.shp` and its sidecars. The centre layer's `value` field is population. In `routes/`, `_routes_con.pkl` stores dense durations in seconds by origin and destination, and `_routes_sim.pkl` stores sparse connector durations by next origin and previous destination. Fitted gravity vectors store alpha, beta, gamma and K. The first three determine normalized demand probabilities.
+
+Use `--help` to see the preprocessing and gravity-fitting options.
+
+```bash
+python main_text/preprocess.py --help
+python main_text/fit_gravity.py --help
+```
+
+Gravity fitting takes an aggregate origin–destination CSV with `pop_o`, `pop_d`, `t` (seconds) and `flow`. Confidential taxi trajectories and individual observed-trip records are excluded.
+
+### Structural indicators
+
+Recompute the nine indicators from the supplied centre layers, clipped rasters (`<province>/<city>_clip.tif`), node coordinates (`routes/<city>_latlon.pkl`) and dense travel times.
+
+```bash
+python main_text/indicators.py
+```
+
+The command writes `indicators.csv` for the cities with clipped rasters. To draw Figure 3 from those results, run `python main_text/fig3.py --inputs PATH/indicators.csv`. The standard Figure 3 command uses the supplied indicator table.
+
+### Sensitivity analyses
+
+For gravity-model sensitivity, use `alpha`, `beta` or `gamma` with `main_text/simulate.py`. For departure-time sensitivity, use `mu` or `sigma` with `supplementary/simulate.py`.
+
+```bash
 python supplementary/simulate.py sigma --province Guangdong --city dongguan --seed 42
 ```
 
-Main-text choices: `baseline`, `alpha`, `beta`, `gamma`, `vehicle_wait`. SI choices: `mu`, `sigma`, `vehicle_wait`. Use `--country-data PATH` to override `data/country/`.
-
-The vehicle-waiting experiment uses punctual pickups and tests advance arrival limits of 0, 2, 4, 6 and 8 minutes. A trip can connect only to one with a strictly later scheduled pickup. Figure 4g-h uses uniform departures within 60 minutes. Supplementary Figure 1c compares 60- and 120-minute departure windows using the same 406 cities, with each curve compared to its own 2-minute setting. The two windows share the order counts and eight seeds per setting and city in `data/country/waiting_experiments.json`.
-
-Run the following commands to regenerate the two sets of waiting arrays. The default departure window is 60 minutes. Omit `--all-cities` and provide `--province` and `--city` for one city. Saved seeds are used by default. Use `--seed` to generate a new set of realizations.
+The vehicle-waiting experiment tests waiting limits of 0–8 min in 2-min steps. Figure 4g–h uses uniform departures over 60 min. SI Fig. 1c compares 60- and 120-min windows against each window's 2-min waiting reference.
 
 ```bash
 python main_text/simulate.py vehicle_wait --all-cities
 python supplementary/simulate.py vehicle_wait --all-cities --window-minutes 120
 ```
 
-Each city uses `<province>/<city>_center.shp` and its sidecars, plus `routes/<city>_routes_con.pkl`, `_routes_sim.pkl` and `_latlon.pkl`. The centre layer's `value` field is population. Dense durations are in seconds, indexed by origin then destination; sparse connectors use next origin then previous destination. Fitted gravity vectors store alpha, beta, gamma and K; the first three determine normalized demand probabilities.
-
-Additional entry points provide input options through `--help`:
-
-```bash
-python main_text/indicators.py --help
-python main_text/preprocess.py --help
-python main_text/fit_gravity.py --help
-```
-
-To recompute the nine indicators, run `python main_text/indicators.py`; `--country-data PATH` overrides the supplied centre layers, `<province>/<city>_clip.tif`, node coordinates and dense durations. It processes cities with supplied clipped rasters and writes `indicators.csv`, which Figure 3 can read with `python main_text/fig3.py --inputs PATH/indicators.csv`. The normal Figure 3 command reads the completed city table without recomputing indicators. Gravity fitting takes an aggregate OD CSV with `pop_o`, `pop_d`, `t` (seconds) and `flow`. Confidential taxi trajectories and individual observed-trip records are excluded.
+Both commands use the saved city list and seeds in `data/country/waiting_experiments.json`. For one city, replace `--all-cities` with `--province PROVINCE --city CITY`. Use `--seed` to generate new realizations.
 
 ## Sources and license
 
