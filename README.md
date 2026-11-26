@@ -41,7 +41,7 @@ python supplementary/reproduce.py fig2
 | SI Fig. 1 | Pearson and Spearman correlations with baseline η for departure-time scale and location (a–b, 164 cities), and Spearman correlations for vehicle waiting limits under two departure windows (c, 406 cities) |
 | SI Fig. 2 | Population maps and spatial sensitivity for three example cities |
 
-Results go to `results/main_text/` or `results/supplementary/`. `--output PATH` selects an empty output directory; `--dpi` controls image resolution (default: 600). Use `fig4 --stats-only` for statistics or `fig3 --analysis-only` to skip drawing. UMAP uses the nine standardized indicators, excluding eta, with `n_neighbors=40`, `min_dist=0.3` and seed 42.
+Results go to `results/main_text/` or `results/supplementary/`. Set `--output PATH` to an empty output directory and use `--dpi` to change the resolution (600 dpi by default). Use `fig4 --stats-only` for statistics or `fig3 --analysis-only` to skip drawing. UMAP uses the nine standardized indicators, excluding η.
 
 `data/city_indicators.csv` is the single city table: `city`, `province`, `POP`, `eta` and nine structural indicators. It contains all 407 cities, with missing indicators left blank. Figure 3 selects complete indicator records; Figure 4 uses the intersection of its sensitivity inputs.
 
@@ -54,8 +54,6 @@ Simulate baseline η using the supplied travel-time matrices and population cent
 ```bash
 python main_text/simulate.py baseline --province Guangdong --city dongguan --seed 42
 ```
-
-Each city uses `<province>/<city>_center.shp` and its sidecars. The centre layer's `value` field is population. In `routes/`, `_routes_con.pkl` stores dense durations in seconds by origin and destination, and `_routes_sim.pkl` stores sparse connector durations by next origin and previous destination. Fitted gravity vectors store alpha, beta, gamma and K. The first three determine normalized demand probabilities.
 
 Use `--help` to see the preprocessing and gravity-fitting options.
 
